@@ -20,22 +20,11 @@ with open('turbines.json', 'r') as json_file:
 with open('storage.json', 'r') as json_file:
     storage_options = json.load(json_file)
 
-# Input Data
-with open('input_data_weather.txt', 'r') as weather_file, open('consumption.csv', 'r') as consumption_file:
-    WEATHER = weather_file.readlines()
-    CONSUMPTION = consumption_file.readlines()  # Read all lines into a list
-
-with open('turbines.json', 'r') as json_file:
-    turbines_info = json.load(json_file)
-
-
-with open('storage.json', 'r') as json_file:
-    storage_options = json.load(json_file)
-
 # Constants
 AMOUNT_OF_HOUSES = 600
 TIME_INTERVAL = 1  # 1 hour
-STORAGE_SIZE = 5000  # kWh
+STORAGE_SIZE = 45000  # kWh
+ELECTRICITY_COST = 0.0004 # 10^3 euros per kWh
 
 # Wind
 TURBINE_CHOICE = "XL"
@@ -45,16 +34,15 @@ BATTERY_CHOICE = "Aqua"
 
 # Solar
 SOLAR_PANEL_AREA = 20  # square meter per house
-SOLAR_PANEL_EFFICIENCY = storage_options[BATTERY_CHOICE]["efficiency"]  # 20% efficiency
+SOLAR_PANEL_EFFICIENCY = 0.3  # 30% efficiency
 SOLAR_COSTS_M2 = 0.14 # thousands euros
-
-
 
 # Blocks
 storage_block = 0  # kWh
 grid = 0  # kWh
 total_wind_produced = 0 # kWh
-hours_without_energy = 0  #
+energy_from_grid = 0  # kWh
+energy_to_grid = 0 # kWh
 
 # Statistics
 storage_block_values = []
@@ -75,56 +63,43 @@ def produce_solar(sunlight) -> float:  # Wh
 # input wind velocity in (m/s) or production singular wind panel
 def produce_wind(wind) -> float:  # Wh
     #print(wind)
-    return turbines_info[TURBINE_CHOICE]["production"][int(wind)] * TURBINE_NR * 1000 # kWh -> wH
+    return turbines_info[TURBINE_CHOICE]["production"][int(wind)] * TURBINE_NR * 1000 # kWh -> Wh
 
 
 def produce(sunlight: float, wind: float) -> float:
     global total_wind_produced
     solar_energy = produce_solar(sunlight)
     wind_energy = produce_wind(wind)
-    total_wind_produced = total_wind_produced + wind_energy / 1000 # Wh -> kWh
+    total_wind_produced =  total_wind_produced + wind_energy / 1000
     #print(f"Production, wind: {wind_energy}, solar_energy: {solar_energy}")
-    # print(f"Production, wind: {wind_energy}, solar_energy: {solar_energy}")
 
     return sum([solar_energy, wind_energy])
 
 
 def iterate(consumption: float, sunlight: float, wind: float):
-    global storage_block, grid
+    global storage_block
     production = produce(sunlight, wind)
     consumption = consume(consumption)
-    delta = (production - consumption) / 1000 # wH -> kWh
-
-    storage_block = storage_block + delta
-    if storage_block > STORAGE_SIZE:
-        grid = grid + (storage_block - STORAGE_SIZE)
-        storage_block = STORAGE_SIZE
+    delta = (production - consumption) / 1000 # Wh -> kWh
     
-    if storage_block <= 0:
-        grid = grid + storage_block
-        storage_block = 0
-    
-    production = produce(sunlight, wind)
-    consumption = consume(consumption)
-    delta = (production - consumption) / 1000 # wH -> kWh
     storage(delta)
 
 
 def storage(delta):
-    global storage_block, grid
-    efficiency = 1
-
+    global storage_block, energy_to_grid, energy_from_grid
+    efficiency = math.sqrt(storage_options[BATTERY_CHOICE]["efficiency"])
     factor = efficiency if delta > 0 else 1/efficiency
-    factor = math.sqrt(factor)
+
     storage_block = storage_block + delta * factor
+
     if storage_block > STORAGE_SIZE:
-        grid = grid + (storage_block - STORAGE_SIZE)*factor
+        energy_to_grid = energy_to_grid + (storage_block - STORAGE_SIZE) * factor
         storage_block = STORAGE_SIZE
 
     if storage_block <= 0:
-        grid = grid + factor*storage_block
+        energy_from_grid = energy_from_grid - storage_block * factor
         storage_block = 0
-    print([int(x) for x in [delta, storage_block, grid]])
+    #print([int(x) for x in [delta, storage_block]])
 
 
 def iterator():
@@ -146,17 +121,22 @@ def iterator():
 
 
 def statistics():
-    global energy_reliability, total_costs
-    #print(storage_block_values)
-    #storage_variance = np.var(storage_block_values)
-    #storage_mean = np.mean(storage_block_values)
-    energy_reliability = 100 * (1 - hours_without_energy / len(WEATHER))
-    total_costs = AMOUNT_OF_HOUSES * SOLAR_PANEL_AREA * SOLAR_COSTS_M2 + turbines_info[TURBINE_CHOICE]["initialcosts"] * TURBINE_NR + total_wind_produced * turbines_info[TURBINE_CHOICE]["costs per kWh"]
-    print(#f"Storage variance: {storage_variance}\n"
-          #f"Storage mean: {storage_mean}\n"
-          f"Energy reliability: {energy_reliability}%\n"
-          f"Total costs (thousands): {total_costs}\n"
-          f"Total wind produce (kWh): {total_wind_produced}\n")
+    global energy_independency, total_costs, energy_from_grid
+
+    energy_independency = 100 * (1 - energy_from_grid / (450 * 600 * len(WEATHER) / 1000))
+    total_costs = 0.001 * (AMOUNT_OF_HOUSES * SOLAR_PANEL_AREA * SOLAR_COSTS_M2 # 10^3 euros -> 10^6 euros
+                   + turbines_info[TURBINE_CHOICE]["initialcosts"] * TURBINE_NR
+                   + turbines_info[TURBINE_CHOICE]["costs-per-kWh"] * total_wind_produced 
+                   + storage_options[BATTERY_CHOICE]["costs-per-kwh"] * STORAGE_SIZE
+                   + (energy_from_grid - energy_to_grid) * ELECTRICITY_COST
+                   )
+    print(
+          f"Energy independency: {energy_independency}%\n"
+          f"Total costs (million): {total_costs}\n"
+          f"Total wind produced (kWh): {total_wind_produced}\n"
+          f"Energy from grid (kWh): {energy_from_grid}\n"
+          f"Energy to grid (kWh): {energy_to_grid}\n"
+          )
 
 
 # Call the iterator function to start processing the data
