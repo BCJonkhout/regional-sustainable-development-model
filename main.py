@@ -1,5 +1,7 @@
-import numpy as np
 import json
+import math
+import numpy as np
+
 # ** Costs
 # Carbon footprint
 # Start up costs
@@ -14,6 +16,18 @@ with open('input_data_weather.txt', 'r') as weather_file, open('consumption.csv'
 
 with open('turbines.json', 'r') as json_file:
     turbines_info = json.load(json_file)
+
+with open('storage.json', 'r') as json_file:
+    storage_options = json.load(json_file)
+
+# Input Data
+with open('input_data_weather.txt', 'r') as weather_file, open('consumption.csv', 'r') as consumption_file:
+    WEATHER = weather_file.readlines()
+    CONSUMPTION = consumption_file.readlines()  # Read all lines into a list
+
+with open('turbines.json', 'r') as json_file:
+    turbines_info = json.load(json_file)
+
 
 with open('storage.json', 'r') as json_file:
     storage_options = json.load(json_file)
@@ -64,13 +78,14 @@ def produce_wind(wind) -> float:  # Wh
     return turbines_info[TURBINE_CHOICE]["production"][int(wind)] * TURBINE_NR * 1000 # kWh -> wH
 
 
-
 def produce(sunlight: float, wind: float) -> float:
     global total_wind_produced
     solar_energy = produce_solar(sunlight)
     wind_energy = produce_wind(wind)
     total_wind_produced = total_wind_produced + wind_energy / 1000 # Wh -> kWh
     #print(f"Production, wind: {wind_energy}, solar_energy: {solar_energy}")
+    # print(f"Production, wind: {wind_energy}, solar_energy: {solar_energy}")
+
     return sum([solar_energy, wind_energy])
 
 
@@ -89,6 +104,26 @@ def iterate(consumption: float, sunlight: float, wind: float):
         grid = grid + storage_block
         storage_block = 0
     
+    production = produce(sunlight, wind)
+    consumption = consume(consumption)
+    delta = (production - consumption) / 1000 # wH -> kWh
+    storage(delta)
+
+
+def storage(delta):
+    global storage_block, grid
+    efficiency = 1
+
+    factor = efficiency if delta > 0 else 1/efficiency
+    factor = math.sqrt(factor)
+    storage_block = storage_block + delta * factor
+    if storage_block > STORAGE_SIZE:
+        grid = grid + (storage_block - STORAGE_SIZE)*factor
+        storage_block = STORAGE_SIZE
+
+    if storage_block <= 0:
+        grid = grid + factor*storage_block
+        storage_block = 0
     print([int(x) for x in [delta, storage_block, grid]])
 
 
