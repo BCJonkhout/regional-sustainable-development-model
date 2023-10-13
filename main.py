@@ -7,37 +7,44 @@ import json
 # Consumption
 # Production
 
-
-# Constants
-AMOUNT_OF_HOUSES = 600
-TIME_INTERVAL = 1  # 1 hour
-STORAGE_SIZE = 45000  # kWh
-
-# Solar
-SOLAR_PANEL_AREA = 20  # square meter per house
-SOLAR_PANEL_EFFICIENCY = 0.2  # 20% efficiency
-SOLAR_COSTS_M2 = 0.14 # thousands euros
-# Wind
-TURBINE_CHOICE = "XL"
-TURBINE_NR = 1
+# Input Data
+with open('input_data_weather.txt', 'r') as weather_file, open('consumption.csv', 'r') as consumption_file:
+    WEATHER = weather_file.readlines()
+    CONSUMPTION = consumption_file.readlines()  # Read all lines into a list
 
 with open('turbines.json', 'r') as json_file:
     turbines_info = json.load(json_file)
 
-#print(turbines_info["XL"]["production"][4])
+with open('storage.json', 'r') as json_file:
+    storage_options = json.load(json_file)
+
+# Constants
+AMOUNT_OF_HOUSES = 600
+TIME_INTERVAL = 1  # 1 hour
+STORAGE_SIZE = 5000  # kWh
+
+# Wind
+TURBINE_CHOICE = "XL"
+TURBINE_NR = 1
+
+BATTERY_CHOICE = "Aqua"
+
+# Solar
+SOLAR_PANEL_AREA = 20  # square meter per house
+SOLAR_PANEL_EFFICIENCY = storage_options[BATTERY_CHOICE]["efficiency"]  # 20% efficiency
+SOLAR_COSTS_M2 = 0.14 # thousands euros
+
+
 
 # Blocks
 storage_block = 0  # kWh
-electricity_sold = 0  # kWh
+grid = 0  # kWh
+total_wind_produced = 0 # kWh
 hours_without_energy = 0  #
 
 # Statistics
 storage_block_values = []
 
-# Input Data
-with open('input_data_weather.txt', 'r') as weather_file, open('consumption.csv', 'r') as consumption_file:
-    WEATHER = weather_file.readlines()
-    CONSUMPTION = consumption_file.readlines()  # Read all lines into a list
 
 
 # input kWh per unit
@@ -59,27 +66,30 @@ def produce_wind(wind) -> float:  # Wh
 
 
 def produce(sunlight: float, wind: float) -> float:
+    global total_wind_produced
     solar_energy = produce_solar(sunlight)
     wind_energy = produce_wind(wind)
+    total_wind_produced = total_wind_produced + wind_energy / 1000 # Wh -> kWh
     #print(f"Production, wind: {wind_energy}, solar_energy: {solar_energy}")
     return sum([solar_energy, wind_energy])
 
 
 def iterate(consumption: float, sunlight: float, wind: float):
-    global storage_block, hours_without_energy, electricity_sold, STORAGE_SIZE
+    global storage_block, grid
     production = produce(sunlight, wind)
     consumption = consume(consumption)
     delta = (production - consumption) / 1000 # wH -> kWh
+
     storage_block = storage_block + delta
-
     if storage_block > STORAGE_SIZE:
-        electricity_sold = electricity_sold + (storage_block - STORAGE_SIZE)
+        grid = grid + (storage_block - STORAGE_SIZE)
         storage_block = STORAGE_SIZE
-    elif storage_block <= 0:
-        hours_without_energy = hours_without_energy + 1
+    
+    if storage_block <= 0:
+        grid = grid + storage_block
         storage_block = 0
-
-    #print(f"Delta: {delta} \t| Storage: {storage_block} \t| Electricity sold: {electricity_sold} \t| Hours without energy: {hours_without_energy}")
+    
+    print([int(x) for x in [delta, storage_block, grid]])
 
 
 def iterator():
@@ -101,16 +111,17 @@ def iterator():
 
 
 def statistics():
-    global Energy_reliability, Total_costs
+    global energy_reliability, total_costs
     #print(storage_block_values)
     #storage_variance = np.var(storage_block_values)
     #storage_mean = np.mean(storage_block_values)
-    Energy_reliability = 100 * (1 - hours_without_energy / len(WEATHER))
-    Total_costs = AMOUNT_OF_HOUSES * SOLAR_PANEL_AREA * SOLAR_COSTS_M2 + turbines_info[TURBINE_CHOICE]["costs"] * TURBINE_NR
+    energy_reliability = 100 * (1 - hours_without_energy / len(WEATHER))
+    total_costs = AMOUNT_OF_HOUSES * SOLAR_PANEL_AREA * SOLAR_COSTS_M2 + turbines_info[TURBINE_CHOICE]["initialcosts"] * TURBINE_NR + total_wind_produced * turbines_info[TURBINE_CHOICE]["costs per kWh"]
     print(#f"Storage variance: {storage_variance}\n"
           #f"Storage mean: {storage_mean}\n"
-          f"Energy reliability: {Energy_reliability}%\n"
-          f"Total costs (thousands): {Total_costs}\n")
+          f"Energy reliability: {energy_reliability}%\n"
+          f"Total costs (thousands): {total_costs}\n"
+          f"Total wind produce (kWh): {total_wind_produced}\n")
 
 
 # Call the iterator function to start processing the data

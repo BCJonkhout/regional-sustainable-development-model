@@ -1,0 +1,37 @@
+{
+    "Aqua": {
+        "name": "Saltwater battery",
+        "efficiency" : 1,
+        "hourly-loss" : 0,
+        "costs-per-kwh": 75,
+        "costs-per-kw" : 0,
+        "additional-costs" : 0
+    },
+
+    "HyBr": {
+        "name": "Hydrogen-Bromine battery",
+        "efficiency" : 1,
+        "hourly-loss" : 0,
+        "costs-per-kwh": 0,
+        "costs-per-kw" : 0,
+        "additional-costs" : 0
+    },
+
+    "Lithium": {
+        "name": "Lithium-ion battery",
+        "efficiency" : 1,
+        "hourly-loss" : 0,
+        "costs-per-kwh": 777,
+        "costs-per-kw" : 0,
+        "additional-costs" : 0
+    },
+
+    "Molten": {
+        "name": "Molten Salt battery",
+        "efficiency" : 1,
+        "hourly-loss" : 0,
+        "costs-per-kwh": 0,
+        "costs-per-kw" : 0,
+        "additional-costs" : 0
+    }
+}
