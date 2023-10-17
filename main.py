@@ -23,7 +23,7 @@ with open('storage.json', 'r') as json_file:
 # Constants
 AMOUNT_OF_HOUSES = 600
 TIME_INTERVAL = 1  # in hours
-STORAGE_SIZE = 45000  # kWh
+STORAGE_SIZE = 10000  # kWh
 ELECTRICITY_COST = 0.0003 # 10^3 euros per kWh
 
 # Wind
@@ -51,6 +51,7 @@ costs_over_time = []
 solar_generation = []
 wind_generation = []
 energy_usage = []
+monthly_data = [[],[],[]]
 
 # input kWh per unit
 def consume(consumption) -> float:  # kWh
@@ -69,27 +70,35 @@ def produce_wind(wind) -> float:  # Wh
 
 
 def produce(sunlight: float, wind: float) -> float:
-    global total_wind_produced, total_solar_produced
     solar_energy = produce_solar(sunlight)
     wind_energy = produce_wind(wind)
     
     solar_generation.append(solar_energy)
     wind_generation.append(wind_energy)
 
-    total_solar_produced = total_solar_produced + solar_energy
-    total_wind_produced =  total_wind_produced + wind_energy
+
     #print(f"Production, wind: {wind_energy}, solar_energy: {solar_energy}")
 
     return sum([solar_energy, wind_energy])
 
 
-def iterate(consumption: float, sunlight: float, wind: float):
+def iterate(consumption: float, sunlight: float, wind: float, month: int):
     global storage_block
     production = produce(sunlight, wind)
-
-    energy_usage.append(float(consumption * 600))
-
     consumption = consume(consumption)
+
+    if month <= len(monthly_data[0]):
+        monthly_data[0][month-1] = monthly_data[0][month-1] + sunlight
+        monthly_data[1][month-1] = monthly_data[1][month-1] + wind
+        monthly_data[2][month-1] = monthly_data[2][month-1] + consumption
+    else:
+        monthly_data[0].append(sunlight)
+        monthly_data[1].append(wind)
+        monthly_data[2].append(consumption)
+
+    
+    energy_usage.append(float(consumption))   
+
     delta = (production - consumption) # kWh
     
     storage(delta)
@@ -127,12 +136,21 @@ def iterator():
         else:
             wind_entry = float(weather_entry[4].strip()) / 10  # from 0.1m/s -> in m/s
 
+        month = int(weather_entry[1].strip()[4:][:-2])
+        year = int(weather_entry[1].strip()[:-4])
+        month = month + 12 * (int(year) - 2021)
+        #print(month)
+
         iterate(float(consumption_entry), float(sunlight_entry),
-                float(wind_entry))  # TODO: Magic numbers  # Close the files after processing
+                float(wind_entry), int(month))  # TODO: Magic numbers  # Close the files after processing
 
 
 def statistics():
     global energy_independency, total_costs
+
+    total_solar_produced = sum(solar_generation)
+    total_wind_produced = sum(wind_generation)
+    total_consumption = sum(energy_usage)
 
     energy_independency = 100 * (1 - energy_from_grid / (450 * 600 * len(WEATHER) / 1000))
     total_costs = 0.001 * (
@@ -148,6 +166,7 @@ def statistics():
           f"Total costs (million): {total_costs}\n"
           f"Total solar produced (kWh): {total_solar_produced}\n"
           f"Total wind produced (kWh): {total_wind_produced}\n"
+          f"Total consumption (kWh): {total_consumption}\n"
           f"Energy from grid (kWh): {energy_from_grid}\n"
           f"Energy to grid (kWh): {energy_to_grid}\n"
           )
