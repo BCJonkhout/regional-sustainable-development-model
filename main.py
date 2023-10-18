@@ -25,11 +25,11 @@ with open('storage.json', 'r') as json_file:
 # Constants
 AMOUNT_OF_HOUSES = 600
 TIME_INTERVAL = 1  # in hours
-STORAGE_SIZE = 10000  # kWh
+STORAGE_SIZE = 5000  # kWh
 ELECTRICITY_COST = 0.0003 # 10^3 euros per kWh
 
 # Wind
-TURBINE_CHOICE = "XL"
+TURBINE_CHOICE = "L"
 TURBINE_NR = 1
 
 BATTERY_CHOICE = "Aqua"
@@ -68,7 +68,8 @@ def produce_solar(sunlight) -> float:  # Wh
 # input wind velocity in (m/s) or production singular wind panel
 def produce_wind(wind) -> float:  # Wh
     #print(wind)
-    return turbines_info[TURBINE_CHOICE]["production"][int(wind)] * TURBINE_NR # kWh
+    addition = turbines_info[TURBINE_CHOICE]["speed-addition"]
+    return turbines_info[TURBINE_CHOICE]["production"][int(wind+addition)] * TURBINE_NR # kWh
 
 
 def produce(sunlight: float, wind: float) -> float:
@@ -88,7 +89,7 @@ def produce(sunlight: float, wind: float) -> float:
 def iterate(consumption: float, sunlight: float, wind: float, month: int):
     global storage_block
     production = produce(sunlight, wind)
-    #consumption = consume(consumption)
+    consumption = consumption * AMOUNT_OF_HOUSES
 
     if month <= len(monthly_data[0]):
         monthly_data[0][month-1] = monthly_data[0][month-1] + solar_energy
@@ -145,7 +146,7 @@ def iterator():
         month = int(weather_entry[1].strip()[4:][:-2])
         year = int(weather_entry[1].strip()[:-4])
         month = month + 12 * (int(year) - 2021)
-        #print(month)
+        #print(i)
 
         iterate(float(consumption_entry), float(sunlight_entry),
                 float(wind_entry), int(month))  # TODO: Magic numbers  # Close the files after processing
