@@ -1,6 +1,7 @@
 import json
 import math
 import numpy as np
+import csv
 
 # ** Costs
 # Carbon footprint
@@ -13,6 +14,7 @@ import numpy as np
 with open('input_data_weather.txt', 'r') as weather_file, open('consumption.csv', 'r') as consumption_file:
     WEATHER = weather_file.readlines()
     CONSUMPTION = consumption_file.readlines()  # Read all lines into a list
+
 
 with open('turbines.json', 'r') as json_file:
     turbines_info = json.load(json_file)
@@ -60,7 +62,7 @@ def consume(consumption) -> float:  # kWh
 
 # input intensity in (Wh/m^2), output in kWh electricity generated
 def produce_solar(sunlight) -> float:  # Wh
-    return sunlight * SOLAR_PANEL_AREA * SOLAR_PANEL_EFFICIENCY * TIME_INTERVAL * AMOUNT_OF_HOUSES / 1000 # Wh -> kWh
+    return sunlight * SOLAR_PANEL_AREA * SOLAR_PANEL_EFFICIENCY * TIME_INTERVAL * AMOUNT_OF_HOUSES # kWh
 
 
 # input wind velocity in (m/s) or production singular wind panel
@@ -70,6 +72,7 @@ def produce_wind(wind) -> float:  # Wh
 
 
 def produce(sunlight: float, wind: float) -> float:
+    global solar_energy, wind_energy
     solar_energy = produce_solar(sunlight)
     wind_energy = produce_wind(wind)
     
@@ -85,11 +88,11 @@ def produce(sunlight: float, wind: float) -> float:
 def iterate(consumption: float, sunlight: float, wind: float, month: int):
     global storage_block
     production = produce(sunlight, wind)
-    consumption = consume(consumption)
+    #consumption = consume(consumption)
 
     if month <= len(monthly_data[0]):
-        monthly_data[0][month-1] = monthly_data[0][month-1] + sunlight
-        monthly_data[1][month-1] = monthly_data[1][month-1] + wind
+        monthly_data[0][month-1] = monthly_data[0][month-1] + solar_energy
+        monthly_data[1][month-1] = monthly_data[1][month-1] + wind_energy
         monthly_data[2][month-1] = monthly_data[2][month-1] + consumption
     else:
         monthly_data[0].append(sunlight)
@@ -100,7 +103,7 @@ def iterate(consumption: float, sunlight: float, wind: float, month: int):
     energy_usage.append(float(consumption))   
 
     delta = (production - consumption) # kWh
-    
+
     storage(delta)
 
 
@@ -124,12 +127,15 @@ def storage(delta):
 
 def iterator():
     for i, weather_list_entry in enumerate(WEATHER):
-        consumption_entry = 0.450 #kWh
+
+        consumption_list_entry = CONSUMPTION[i].split('\t') #kWh
+        consumption_entry = consumption_list_entry[2]
+        #consumption_entry = 274 #kWh for all houses
         weather_entry = weather_list_entry.split(',')
         if weather_entry[11].strip() == "":
             sunlight_entry = 0
         else:
-            sunlight_entry = float(weather_entry[11].strip()) * 10000 / 3600  # -> J/h/cm^2 -> J/h/m^2 -> = Wh/m^2
+            sunlight_entry = float(weather_entry[11].strip()) * 10000 / 3600 / 1000  # -> J/h/cm^2 -> J/h/m^2 -> Wh/m^2 -> kWh/m^2
 
         if weather_entry[4].strip() == "":
             wind_entry = 0
@@ -156,10 +162,10 @@ def statistics():
     total_costs = 0.001 * (
         AMOUNT_OF_HOUSES * SOLAR_PANEL_AREA * SOLAR_COSTS_M2 # 10^3 euros -> 10^6 euros
         #+ 0.00012 * total_solar_produced  # LCoE of solar
-        + turbines_info[TURBINE_CHOICE]["initialcosts"] * TURBINE_NR + turbines_info[TURBINE_CHOICE]["costs-per-kWh"] * total_wind_produced 
+        + turbines_info[TURBINE_CHOICE]["initialcosts"] * TURBINE_NR + turbines_info[TURBINE_CHOICE]["costs-per-kWh"] * total_wind_produced # Intial and variable costs for chosen wind turbines
         #+ 0.00008 * total_wind_produced  # LCoE of on-shore wind
-        + storage_options[BATTERY_CHOICE]["costs-per-kwh"] * STORAGE_SIZE
-        + (energy_from_grid - energy_to_grid) * ELECTRICITY_COST
+        + storage_options[BATTERY_CHOICE]["costs-per-kwh"] * STORAGE_SIZE #Costs per kWh for chosen battery
+        + (energy_from_grid - energy_to_grid) * ELECTRICITY_COST # Cost/revenue from grid
         )
     print(
           f"Energy independency: {energy_independency}%\n"

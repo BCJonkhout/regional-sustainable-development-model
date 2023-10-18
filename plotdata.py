@@ -21,7 +21,7 @@ def monthlydata():
     plt.xlabel("Months")
     plt.ylabel("kWh")
 
-
+#hourlydata()
 monthlydata()
 
 plt.show()
