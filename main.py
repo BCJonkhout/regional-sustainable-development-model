@@ -91,18 +91,16 @@ def iterate(consumption: float, sunlight: float, wind: float, month: int):
     production = produce(sunlight, wind)
     consumption = consumption * AMOUNT_OF_HOUSES
 
-    if month <= len(monthly_data[0]):
-        monthly_data[0][month-1] = monthly_data[0][month-1] + solar_energy
+    if month <= len(monthly_data[0]):   # If the number of the month is smaller than or equal to the length of the array
+        monthly_data[0][month-1] = monthly_data[0][month-1] + solar_energy  # Add the current hour value to the total for that month
         monthly_data[1][month-1] = monthly_data[1][month-1] + wind_energy
         monthly_data[2][month-1] = monthly_data[2][month-1] + consumption
     else:
-        monthly_data[0].append(sunlight)
+        monthly_data[0].append(sunlight)    # Else start a new month
         monthly_data[1].append(wind)
         monthly_data[2].append(consumption)
 
-    
     energy_usage.append(float(consumption))   
-
     delta = (production - consumption) # kWh
 
     storage(delta)
@@ -160,22 +158,30 @@ def statistics():
     total_consumption = sum(energy_usage)
 
     energy_independency = 100 * (1 - energy_from_grid / (450 * 600 * len(WEATHER) / 1000))
-    total_costs = 0.001 * (
-        AMOUNT_OF_HOUSES * SOLAR_PANEL_AREA * SOLAR_COSTS_M2 # 10^3 euros -> 10^6 euros
-        #+ 0.00012 * total_solar_produced  # LCoE of solar
-        + turbines_info[TURBINE_CHOICE]["initialcosts"] * TURBINE_NR + turbines_info[TURBINE_CHOICE]["costs-per-kWh"] * total_wind_produced # Intial and variable costs for chosen wind turbines
-        #+ 0.00008 * total_wind_produced  # LCoE of on-shore wind
-        + storage_options[BATTERY_CHOICE]["costs-per-kwh"] * STORAGE_SIZE #Costs per kWh for chosen battery
-        + (energy_from_grid - energy_to_grid) * ELECTRICITY_COST # Cost/revenue from grid
-        )
+    
+    solar_cost = AMOUNT_OF_HOUSES * SOLAR_PANEL_AREA * SOLAR_COSTS_M2
+    # 0.00012 * total_solar_produced  # LCoE of solar
+    wind_cost = turbines_info[TURBINE_CHOICE]["initialcosts"] * TURBINE_NR + turbines_info[TURBINE_CHOICE]["costs-per-kWh"] * total_wind_produced # Intial and variable costs for chosen wind turbines
+    # 0.00008 * total_wind_produced  # LCoE of on-shore wind
+    storage_cost = storage_options[BATTERY_CHOICE]["costs-per-kwh"] * STORAGE_SIZE # Costs per kWh for chosen battery
+    grid_balance = (energy_from_grid - energy_to_grid) * ELECTRICITY_COST # Cost/revenue from grid
+
+    total_costs = 0.001 * (solar_cost + wind_cost + storage_cost + grid_balance) # 10^3 euros -> 10^6 euros
     print(
           f"Energy independency: {energy_independency}%\n"
-          f"Total costs (million): {total_costs}\n"
-          f"Total solar produced (kWh): {total_solar_produced}\n"
-          f"Total wind produced (kWh): {total_wind_produced}\n"
           f"Total consumption (kWh): {total_consumption}\n"
+          f"Total costs (millions): {total_costs}\n"
+          f"\n"
+          f"Total solar produced (kWh): {total_solar_produced}\n"
+          f"Solar cost (thousands): {solar_cost}\n"
+          f"\n"
+          f"Total wind produced (kWh): {total_wind_produced}\n"
+          f"Wind cost (thousands): {wind_cost}\n"
+          f"\n"
           f"Energy from grid (kWh): {energy_from_grid}\n"
           f"Energy to grid (kWh): {energy_to_grid}\n"
+          f"Grid balance (thousands): {grid_balance}\n"
+          f"Storage cost (thousands): {storage_cost}\n"
           )
 
 
