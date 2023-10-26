@@ -66,6 +66,7 @@ def produce_solar(sunlight) -> float:  # Wh
 def produce_wind(wind) -> float:  # Wh
     #print(wind)
     addition = turbines_info[TURBINE_CHOICE]["speed-addition"]
+    
     return turbines_info[TURBINE_CHOICE]["production"][int(wind+addition)] * turbine_nr # kWh
 
 def produce(sunlight: float, wind: float) -> float:
@@ -103,6 +104,7 @@ def iterate(consumption: float, sunlight: float, wind: float, month: int):
     production = produce(sunlight, wind)
     consumption = consumption * AMOUNT_OF_HOUSES
 
+    # Aggregating the data per month:
     if month <= len(monthly_data[0]):   # If the number of the month is smaller than or equal to the length of the array
         monthly_data[0][month-1] = monthly_data[0][month-1] + solar_energy  # Add the current hour value to the total for that month
         monthly_data[1][month-1] = monthly_data[1][month-1] + wind_energy
@@ -119,10 +121,12 @@ def iterate(consumption: float, sunlight: float, wind: float, month: int):
 
 def iterator():
     for i, weather_list_entry in enumerate(WEATHER):
-        
+        # if i == 1:  # Checking to see if the numbers used are correct
+        #     print(f"TEST Turbine Nr: {turbine_nr}")
+        #     print(f"TEST Solar area: {solar_area}")
         consumption_list_entry = CONSUMPTION[i].split('\t') #kWh
         consumption_entry = consumption_list_entry[2]
-        #consumption_entry = 274 #kWh for all houses
+
         weather_entry = weather_list_entry.split(',')
         if weather_entry[11].strip() == "":
             sunlight_entry = 0
@@ -137,7 +141,6 @@ def iterator():
         month = int(weather_entry[1].strip()[4:][:-2])
         year = int(weather_entry[1].strip()[:-4])
         month = month + 12 * (int(year) - 2021)
-        #print(i)
 
         iterate(float(consumption_entry), float(sunlight_entry),
                 float(wind_entry), int(month))  # TODO: Magic numbers  # Close the files after processing
@@ -146,6 +149,7 @@ def statistics(solar_nr: int, wind_nr: int):
     global solar_area, turbine_nr
     solar_area = solar_nr
     turbine_nr = wind_nr
+    print(f"solar area: {solar_area}, turbine number: {turbine_nr}")
     iterator()
 
     total_solar_produced = sum(solar_generation)
@@ -163,28 +167,28 @@ def statistics(solar_nr: int, wind_nr: int):
     storage_cost = storage_options[BATTERY_CHOICE]["costs-per-kwh"] * STORAGE_SIZE # Costs per kWh for chosen battery
     grid_balance = (energy_from_grid - energy_to_grid) * ELECTRICITY_COST # Cost/revenue from grid
 
-    # total_costs = 0.001 * (solar_cost + wind_cost + storage_cost + grid_balance) # 10^3 euros -> 10^6 euros
-    # print(
-    #       f"Energy independency: {energy_independency}%\n"
-    #       f"Total consumption (kWh): {total_consumption}\n"
-    #       f"Total costs (millions): {total_costs}\n"
-    #       f"\n"
-    #       f"Total solar produced (kWh): {total_solar_produced}\n"
-    #       f"Solar cost (thousands): {solar_cost}\n"
-    #       f"\n"
-    #       f"Total wind produced (kWh): {total_wind_produced}\n"
-    #       f"Wind cost (thousands): {wind_cost}\n"
-    #       f"\n"
-    #       f"Energy from grid (kWh): {energy_from_grid}\n"
-    #       f"Energy to grid (kWh): {energy_to_grid}\n"
-    #       f"Grid balance (thousands): {grid_balance}\n"
-    #       f"Storage cost (thousands): {storage_cost}\n"
-    #       f"\n"
-    #       f"Storage duration (hours): {storage_duration}\n"
-    #       f"Overproduction (%): {overproduction}%\n"
-    #       )
+    total_costs = 0.001 * (solar_cost + wind_cost + storage_cost + grid_balance) # 10^3 euros -> 10^6 euros
+    print(
+          f"Energy independency: {energy_independency}%\n"
+          f"Total consumption (kWh): {total_consumption}\n"
+          f"Total costs (millions): {total_costs}\n"
+          f"\n"
+          f"Total solar produced (kWh): {total_solar_produced}\n"
+          f"Solar cost (thousands): {solar_cost}\n"
+          f"\n"
+          f"Total wind produced (kWh): {total_wind_produced}\n"
+          f"Wind cost (thousands): {wind_cost}\n"
+          f"\n"
+          f"Energy from grid (kWh): {energy_from_grid}\n"
+          f"Energy to grid (kWh): {energy_to_grid}\n"
+          f"Grid balance (thousands): {grid_balance}\n"
+          f"Storage cost (thousands): {storage_cost}\n"
+          f"\n"
+          f"Storage duration (hours): {storage_duration}\n"
+          f"Overproduction (%): {overproduction}%\n"
+          )
     return [monthly_data[0], monthly_data[1]]
 
 
 # Call the statistics function to run the script.
-statistics(20, 2000) # 20 m^2 solar panel ares per house and 2000 wind turbines
+statistics(50, 3800) # 20 m^2 solar panel ares per house and 2000 wind turbines
