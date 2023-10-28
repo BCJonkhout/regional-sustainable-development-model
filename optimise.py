@@ -4,8 +4,8 @@ import numpy as np
 
 def coefficient_variation(): # Needs a range of solar panel areas and wind turbines, returns the lowest variability per month.
     import mainvar
-    number_array = [[41, 42, 43, 44, 45],
-                    [3000, 3100, 3200, 3300, 3400, 3500]]
+    number_array = [[41],
+                    [3100, 3200]]
     CoVar = float('inf')
     for s in range(len(number_array[0])):
         for w in range(len(number_array[1])):
@@ -53,13 +53,14 @@ def storage_costs(overproduction: float):
           f"Energy reliability: {energy_reliability}\n"
           f"Storage duration: {storage_duration}\n"
           "----------------------------------------------------------------------------\n")
-    return(solar_cost, wind_cost, storage_cost, storage_duration)
+    return(solar_cost, wind_cost, storage_cost, total_cost, storage_duration)
 
 def Solar_Wind_Storage():
     overproductions = [1.25, 1.5, 1.75, 2, 3, 4, 5, 7.5, 10]
     solar_array = []
     wind_array = []
     storage_array = []
+    total_array = []
     duration_array = []
 
     for i in range(len(overproductions)):
@@ -67,7 +68,8 @@ def Solar_Wind_Storage():
         solar_array.append(results[0])
         wind_array.append(results[1])
         storage_array.append(results[2])
-        duration_array.append(results[3])
+        total_array.append(results[3])
+        duration_array.append(results[4])
 
     fig, wss = plt.subplots()
     x = overproductions
@@ -89,5 +91,13 @@ def Solar_Wind_Storage():
     wss2.legend(loc='upper center', bbox_to_anchor=(0.8, -0.15), fancybox=True, shadow=True)
     plt.show()
 
-# coefficient_variation()
-Solar_Wind_Storage()
+    plt.bar(x_positions, total_array, label='Total costs since 2021')
+    plt.xticks(x_positions, ['{:.0%}'.format(val-1) for val in x])
+    plt.legend()
+
+    plt.show()
+
+    
+
+coefficient_variation()
+# Solar_Wind_Storage()

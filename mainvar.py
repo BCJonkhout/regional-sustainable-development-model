@@ -43,17 +43,10 @@ storage_block = 0  # kWh
 grid = 0  # kWh
 total_wind_produced = 0 # kWh
 total_solar_produced = 0 #kWh
-energy_from_grid = 0  # kWh
-energy_to_grid = 0 # kWh
+
 
 # Statistics
-battery_level = []
-costs_over_time = []
-solar_generation = []
-wind_generation = []
-energy_usage = []
-monthly_data = [[],[],[]] # position 0 = Solar, 1 = Wind, 2 = Consumption
-monthly_average = [[],[],[]] # ^^
+
 
 # input kWh per unit
 def consume(consumption) -> float:  # kWh
@@ -71,7 +64,7 @@ def produce_wind(wind) -> float:  # Wh
     return turbines_info[TURBINE_CHOICE]["production"][int(wind+addition)] * turbine_nr # kWh
 
 def produce(sunlight: float, wind: float) -> float:
-    global solar_energy, wind_energy
+    global solar_energy, wind_energy, solar_generation, wind_generation
     solar_energy = produce_solar(sunlight)
     wind_energy = produce_wind(wind)
     
@@ -84,7 +77,7 @@ def produce(sunlight: float, wind: float) -> float:
     return sum([solar_energy, wind_energy])
 
 def storage(delta):
-    global storage_block, energy_to_grid, energy_from_grid
+    global storage_block, energy_to_grid, energy_from_grid, battery_level
     efficiency = math.sqrt(storage_options[BATTERY_CHOICE]["efficiency"])
     factor = efficiency if delta > 0 else 1/efficiency
 
@@ -103,7 +96,7 @@ def storage(delta):
     #print([int(x) for x in [delta, storage_block]])
 
 def iterate(consumption: float, sunlight: float, wind: float, month: int):
-    global storage_block
+    global storage_block, monthly_data, energy_usage
     production = produce(sunlight, wind)
     consumption = consumption * AMOUNT_OF_HOUSES
 
@@ -143,7 +136,7 @@ def iterator():
 
         month = int(weather_entry[1].strip()[4:][:-2])
         year = int(weather_entry[1].strip()[:-4])
-        month = month + 12 * (int(year) - 2021)
+        month = month + 12 * (int(year) - 2018)
 
         iterate(float(consumption_entry), float(sunlight_entry),
                 float(wind_entry), int(month))  # TODO: Magic numbers  # Close the files after processing
@@ -162,9 +155,19 @@ def monthaverage():
         
 
 def statistics(solar_nr: int, wind_nr: int):
-    global solar_area, turbine_nr
+    global solar_area, turbine_nr, battery_level, costs_over_time, solar_generation, wind_generation, energy_usage, monthly_data, monthly_average, energy_from_grid, energy_to_grid
     solar_area = solar_nr
     turbine_nr = wind_nr
+    battery_level = []
+    costs_over_time = []
+    solar_generation = []
+    wind_generation = []
+    energy_usage = []
+    monthly_data = [[],[],[]] # position 0 = Solar, 1 = Wind, 2 = Consumption
+    monthly_average = [[],[],[]] # ^^
+    energy_from_grid = 0  # kWh
+    energy_to_grid = 0 # kWh
+
     #print(f"solar area: {solar_area}, turbine number: {turbine_nr}")
     iterator()
     monthaverage()
