@@ -137,7 +137,7 @@ def iterator():
 
         month = int(weather_entry[1].strip()[4:][:-2])
         year = int(weather_entry[1].strip()[:-4])
-        month = month + 12 * (int(year) - 2021)
+        month = month + 12 * (int(year) - 2018)
 
         iterate(float(consumption_entry), float(sunlight_entry),
                 float(wind_entry), int(month))  # TODO: Magic numbers  # Close the files after processing

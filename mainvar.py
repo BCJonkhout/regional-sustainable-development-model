@@ -142,15 +142,20 @@ def iterator():
                 float(wind_entry), int(month))  # TODO: Magic numbers  # Close the files after processing
 
 def monthaverage():
-    print(f"Length: {len(monthly_data[0])}")
-    lastmonth = 12 * (len(monthly_data[0]) / 12 - math.floor(len(monthly_data[0]) / 12)) # Determining the last month. E.g., if we have a total of 38, it returns 2. 
-    print(f"Lastmonth: {lastmonth}")
+    global monthly_average, monthly_data
+    total_months = len(monthly_data[0])
+    lastmonth = 12 * (total_months / 12 - math.floor(total_months / 12)) # Determining the last month. E.g., if we have a total of 38, it returns 2. 
     for n in range(3):
         for i in range(12):
-            if i < lastmonth:
-                monthly_average[n].append((monthly_data[n][i] + monthly_data[n][i+12] + monthly_data[n][i+24]) / 3)
-            else:
-                monthly_average[n].append((monthly_data[n][i] + monthly_data[n][i+12]) / 2)
+            nr_months = math.ceil(total_months / 12) if i < lastmonth else math.floor(total_months / 12)
+            for j in range(nr_months):
+                if j > 0:
+                    monthly_average[n][i] = monthly_average[n][i] + monthly_data[n][i + 12 * j]
+                else:
+                    monthly_average[n][i] = monthly_data[n][i + 12 * j]
+            
+            monthly_average[n][i] = monthly_average[n][i] / nr_months
+    return (monthly_average)
 
         
 
@@ -164,7 +169,7 @@ def statistics(solar_nr: int, wind_nr: int):
     wind_generation = []
     energy_usage = []
     monthly_data = [[],[],[]] # position 0 = Solar, 1 = Wind, 2 = Consumption
-    monthly_average = [[],[],[]] # ^^
+    monthly_average = [np.zeros(12), np.zeros(12), np.zeros(12)] # ^^
     energy_from_grid = 0  # kWh
     energy_to_grid = 0 # kWh
 
@@ -210,4 +215,4 @@ def statistics(solar_nr: int, wind_nr: int):
 
 
 # Call the statistics function to run the script.
-statistics(46, 3500) # 20 m^2 solar panel ares per house and 2000 wind turbines
+# statistics(46, 3500) # 20 m^2 solar panel ares per house and 2000 wind turbines
